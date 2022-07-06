@@ -1,0 +1,81 @@
+# function: read tdos.dat
+# total dos
+def read_tdos(position_tdos):
+    energy_tdos=[];tdos_up=[];tdos_down=[];data_tdos=[]
+    with open(position_tdos,'r') as file:
+        file.seek(45)
+        for line in file:        
+            line = line.strip('\n').strip().split('    ')
+            if line[0]=='':
+                continue
+# string is immutable, so must be re-assigned:
+            for i in range(0,3):
+                line[i]=line[i].strip()
+                line[i]=float(line[i]);
+# save data:
+            energy_tdos.append(line[0]);tdos_up.append(line[1]);tdos_down.append(line[2])
+            data_tdos.append(line)
+    return energy_tdos,tdos_up,tdos_down,data_tdos
+    
+# function: read pdos.dat
+# projected dos
+def read_pdos(position_pdos):
+    energy_pdos=[];pdos_s=[];pdos_py=[];pdos_pz=[];pdos_px=[];data_pdos=[]
+    with open(position_pdos,'r') as file:
+        file.seek(132)
+        for line in file:        
+            line = line.strip('\n').strip().split('   ')
+            if line[0]=='':
+                continue
+# string is immutable, so must be reassigned:
+            for i in range(0,11):
+                line[i]=line[i].strip()
+                line[i]=float(line[i]);
+# save data:
+            energy_pdos.append(line[0]);pdos_s.append(line[1])
+            pdos_py.append(line[2]);pdos_pz.append(line[3]);pdos_px.append(line[4])
+            data_pdos.append(line)
+        return energy_pdos,pdos_s,pdos_py,pdos_pz,pdos_px,data_pdos
+        
+# draw_dos
+def draw_dos(position_pic,title):
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
+# extract files
+    fig,ax= plt.subplots(figsize=(3,4))
+    plt.title(title,fontsize=20)
+# axis spacing
+    plt.xlim((-2, 2))
+    plt.ylim((0, 1))
+    plt.xlabel('energy(eV)', fontsize=20)
+    plt.tick_params(labelsize=16)
+    plt.tight_layout()# Display the picture in its entirety
+
+# divide into different lines:
+#     ax.plot(energy_tdos,tdos_up,label='sum')
+    ax.plot(energy_pdos,pdos_s,label='s')
+    ax.plot(energy_pdos,pdos_py,label='py')
+    ax.plot(energy_pdos,pdos_pz,label='pz')
+    ax.plot(energy_pdos,pdos_px,label='px')
+    ax.legend()
+# save in differenet files:
+    plt.savefig(position_pic, format='png')
+    
+# Console
+import os
+folder = "C:/Users/KING YPY/Documents/Jupyter/dos" # folder
+strain_mode=['biaxial','shear','uniaxial_a','uniaxial_b'] # strain modes
+for i in range(0,len(strain_mode)):
+    path=folder+'/'+strain_mode[i]
+    files= os.listdir(path) # get all files names
+# call functions:
+    for file in files:
+        if '.dat' in file and 'tdos' in file:
+            position_tdos=path+'/'+file
+# get corresponding number(strain)
+            strain=file.strip('tdos_strain_').strip('.dat')
+            position_pdos=path+'/'+'pdos_strain_'+strain+'.dat'
+            energy_pdos,pdos_s,pdos_py,pdos_pz,pdos_px,data_pdos=read_pdos(position_pdos)
+            position_pic=path+'/'+'pic_strain_'+strain+'.png'
+            title=strain
+            draw_dos(position_pic,title)
