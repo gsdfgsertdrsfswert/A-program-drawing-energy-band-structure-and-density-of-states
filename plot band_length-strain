@@ -1,0 +1,230 @@
+# calculate the bond length, and the bond angle of v1,v2
+# gradiance only approriptate for 2 vecs.
+from math import sqrt, pow, acos
+import numpy as np
+def angle(v1,v2):
+    pi = 3.1415926
+    vector_prod = np.matmul(v1,v2)
+    length1=np.linalg.norm(v1);length2=np.linalg.norm(v2)
+    cos = vector_prod / (length1*length2)
+    angle=(acos(cos) / pi) * 180
+    return angle
+# if __name__ == '__main__':
+#     a = np.array([1,2,2,2])
+#     b = np.array([2,2,2,2])
+#     print(angle_of_vector(a,b))
+
+# function: read contcar
+def read_contcar(position_contcar,strain_mode):
+    from math import sqrt, pow, acos
+    import numpy as np
+# Store lattice vectors as A, position of atoms as P:
+    data=[];A=np.empty([3,3]);P=np.empty([3,4])
+    with open(position_contcar,'r') as file:
+        file.seek(70)
+        for line in file:
+            line = line.strip('\n').strip().split(' ')
+            line1 = list(filter(None,line)) # remove all '' effectively!!!
+            line2=[]
+            for item in line1:
+                if item=='P' or item=='Direct':# ignore strings in CONTCAR
+                    continue
+                line2.append(float(item))
+            data.append(line2)
+# shear condition is a special case:
+    if strain_mode=='shear' and data[7][1]>0.8:
+        data[7][1]=data[7][1]-1
+# store data as arrays:
+    A=np.array([data[0],data[1],data[2]]);P=np.array([data[6],data[7],data[8],data[9]])
+    return A,P
+    
+# function: calculate bond lengths and bond angles
+def bond(A,P):
+    from math import sqrt, pow, acos
+    import numpy as np
+    A=np.transpose(A)
+    X=np.matmul(P,A)
+    p1=X[0];p2=X[1];p3=X[2];p4=X[3]
+# defination of bond lengths and angles for phosphere( draw pics to show)
+    l1=np.linalg.norm(p1-p4);l2=np.linalg.norm(p1-p2)
+    
+# call function angle to calculate angles:
+    angle1=angle(p4-p1,p2-p3);angle2=angle(p4-p1,p2-p1)
+    
+    l1_2=np.linalg.norm(p2-p3);angle2_2=angle(p2-p3,p2-p1)
+    return l1,l2,angle1,angle2,l1_2,angle2_2
+    
+# function: compare the range of 2 lists; return the max and the min of 2 lists
+def compare(list1,list2):
+    dominant_list=[]
+    if (max(list1)-min(list1))>(max(list2)-min(list2)):
+        dominant_list=list1
+    else:
+        dominant_list=list2
+    maximum=max(max(list1),max(list2));minimum=min(min(list1),min(list2))
+    return dominant_list,maximum,minimum
+    
+# only run with dominant_list
+# has to be revised manually for each strain modes
+
+def add_lines(strain,stress,maximum,minimum):
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
+    
+# strain_divide has to be revised!!!
+    strain_divide=0.2; stress_divide=round(stress[strain.index(strain_divide)],2)
+# strain_divide has to be revised!!!
+    stress_min=minimum;stress_max=maximum
+# add 3 squares, from min to 0; 0 to max; max to the end
+    plt.fill_between(strain[strain.index(-0.12):strain.index(0)+1],stress_min,stress_max,facecolor='grey',alpha=0.3)
+    plt.fill_between(strain[strain.index(0):strain.index(strain_divide)+1],stress_min,stress_max,facecolor='green',alpha=0.3)
+    plt.fill_between(strain[strain.index(strain_divide):],stress_min,stress_max,facecolor='red',alpha=0.3)
+# add text, approximate stress_max
+#     plt.axvline(x=0.24, color='k', linestyle='--')
+#     plt.text(strain_divide,0.8*stress_divide,(strain_divide,stress_divide),color='k',fontsize=16)
+
+# function: plot(strain, l1, l2)
+
+def plot_bond_length(strain,bond_length1,bond_length2,strain_mode):
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
+# prepare save address
+    bond_length_list=[bond_length1,bond_length2];label_type=['bond_length1','bond_length2']
+# plot lines and scatters:
+    fig,ax= plt.subplots()
+    for length in bond_length_list:
+        ax.plot(strain, length, label=label_type[bond_length_list.index(length)])
+        ax.legend()
+        for i in range(0,len(strain)):
+            ax.scatter(strain[i],length[i],marker='.',color='black')
+# add lines:
+    dominant_list,maximum,minimum=compare(bond_length1,bond_length2)
+    add_lines(strain,dominant_list,maximum,minimum)
+# rename labels:
+    plt.xlabel(strain_mode+' Strain', fontsize=20)
+    plt.ylabel('bond_length'+' (Å)', fontsize=20)
+    plt.tick_params(labelsize=18)
+    plt.tight_layout()# Display the picture in its entirety
+# prepare save address:
+    save_address='C:/Users/KING YPY/Documents/Jupyter/structure/'
+    save_address=save_address+strain_mode+'_'+'bond_length'+'.png'
+    plt.savefig(save_address, format='png')
+    
+# function: plot(strain, angle1, angle2)
+
+def plot_bond_angle(strain,bond_angle1,bond_angle2,strain_mode):
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
+# prepare save address
+    bond_angle_list=[bond_angle1,bond_angle2];label_type=['bond_angle1','bond_angle2']
+# plot lines and scatters:
+    fig,ax= plt.subplots()
+    for angle in bond_angle_list:
+        ax.plot(strain, angle, label=label_type[bond_angle_list.index(angle)])
+        ax.legend()
+        for i in range(0,len(strain)):
+            ax.scatter(strain[i],angle[i],marker='.',color='black')
+# add lines:
+    dominant_list,maximum,minimum=compare(bond_angle1,bond_angle2)
+    add_lines(strain,dominant_list,maximum,minimum)
+# rename labels:
+    plt.xlabel(strain_mode+' Strain', fontsize=20)
+    plt.ylabel('bond_angle'+' (°)', fontsize=20)
+    plt.tick_params(labelsize=18)
+    plt.tight_layout()# Display the picture in its entirety
+# prepare save address:
+    save_address='C:/Users/KING YPY/Documents/Jupyter/structure/'
+    save_address=save_address+strain_mode+'_'+'bond_angle'+'.png'
+    plt.savefig(save_address, format='png')
+    
+# function: only available when shear! plot(strain, l1, l1_2)
+
+def compare_bond_length(strain,bond_length1,bond_length1_2,strain_mode):
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
+
+# prepare save address
+    bond_length_list=[bond_length1,bond_length1_2];label_type=['bond_length1(P1 P4)','bond_length1_2(P2 P3)']
+# plot lines and scatters:
+    fig,ax= plt.subplots()
+    for length in bond_length_list:
+        ax.plot(strain, length, label=label_type[bond_length_list.index(length)])
+        ax.legend()
+        for i in range(0,len(strain)):
+            ax.scatter(strain[i],length[i],marker='.',color='black')
+# # add lines:
+#     dominant_list,maximum,minimum=compare(bond_length1,bond_length1_2)
+#     add_lines(strain,dominant_list,maximum,minimum)
+# rename labels:
+    plt.xlabel(strain_mode+' Strain', fontsize=20)
+    plt.ylabel('compare_length'+' (Å)', fontsize=20)
+    plt.tick_params(labelsize=18)
+    plt.tight_layout()# Display the picture in its entirety
+# prepare save address:
+    save_address='C:/Users/KING YPY/Documents/Jupyter/structure/'
+    save_address=save_address+strain_mode+'_'+'compare_length'+'.png'
+    plt.savefig(save_address, format='png')
+    
+# function: only available when shear! plot(strain, angle1, angle2)
+
+def compare_bond_angle(strain,bond_angle2,bond_angle2_2,strain_mode):
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
+# prepare save address
+    bond_angle_list=[bond_angle2,bond_angle2_2];label_type=['bond_angle2(L1,L2)','bond_angle2_2(L1",L2)']
+# plot lines and scatters:
+    fig,ax= plt.subplots()
+    for angle in bond_angle_list:
+        ax.plot(strain, angle, label=label_type[bond_angle_list.index(angle)])
+        ax.legend()
+        for i in range(0,len(strain)):
+            ax.scatter(strain[i],angle[i],marker='.',color='black')
+# # add lines:
+#     dominant_list,maximum,minimum=compare(bond_angle2,bond_angle2_2)
+#     add_lines(strain,dominant_list,maximum,minimum)
+# rename labels:
+    plt.xlabel(strain_mode+' Strain', fontsize=20)
+    plt.ylabel('bond_angle'+' (°)', fontsize=20)
+    plt.tick_params(labelsize=18)
+    plt.tight_layout()# Display the picture in its entirety
+# prepare save address:
+    save_address='C:/Users/KING YPY/Documents/Jupyter/structure/'
+    save_address=save_address+strain_mode+'_'+'compare_angle'+'.png'
+    plt.savefig(save_address, format='png')
+    
+# main program
+import os
+# Fundamental setting:
+strain_modes=['biaxial']
+# strain_modes=['biaxial','shear','uniaxial_a','uniaxial_b']
+for strain_mode in strain_modes:
+    path='C:/Users/KING YPY/Documents/Jupyter/structure/'
+    path=path+strain_mode
+    files= os.listdir(path)
+# get data from every CONTCAR file:
+    data_contcar=[];strain=[];bond_length1=[];bond_length2=[]
+    bond_angle1=[];bond_angle2=[];bond_length1_2=[];bond_angle2_2=[]
+    for file in files:
+        position_contcar=path+'/'+file
+        number=file.strip('contcar_strain_')# get corresponding number
+        number=float(number)
+# call functions to calculate length and angle:
+        A,P=read_contcar(position_contcar,strain_mode)
+        l1,l2,angle1,angle2,l1_2,angle2_2=bond(A,P)
+# prepare data_contcar to draw:
+        data_contcar.append([number,l1,l2,angle1,angle2,l1_2,angle2_2])
+    data_contcar=sorted(data_contcar)
+# read data from data_contcar:
+    for data in data_contcar:
+        strain.append(data[0]);bond_length1.append(data[1]);bond_length2.append(data[2]);
+        bond_angle1.append(data[3]);bond_angle2.append(data[4])
+        bond_length1_2.append(data[5]);bond_angle2_2.append(data[6])
+# call functions to draw pics
+    dominant_length=compare(bond_length1,bond_length2);
+    dominant_angle=compare(bond_angle1,bond_angle2)
+    plot_bond_length(strain,bond_length1,bond_length2,strain_mode)
+    plot_bond_angle(strain,bond_angle1,bond_angle2,strain_mode)
+    if strain_mode=='shear':
+        compare_bond_length(strain,bond_length1,bond_length1_2,strain_mode)
+        compare_bond_angle(strain,bond_angle2,bond_angle2_2,strain_mode)
+    print(strain);print(bond_length1);print(bond_length2);print(bond_angle1);print(bond_angle2)
