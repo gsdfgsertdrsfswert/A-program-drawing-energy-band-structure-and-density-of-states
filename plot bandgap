@@ -1,0 +1,73 @@
+# function: read BAND_GAP
+def read_gap(position_gap):
+    with open(position_gap,'r') as file:
+        for line in file:        
+            line = line.strip('\n').strip().split('   ')
+            if line[0]=='Band Gap (eV):':
+                line[1]=line[1].strip(' ')
+                band_gap=float(line[1])
+            elif line[0]=='Band Character:':
+                line[1]=line[1].strip(' ')
+                band_state=line[1]
+    return band_gap,band_state
+# function: read band gaps and band states from files in a specified folder
+
+def read_path(path):
+    import os
+    files= os.listdir(path) # get all files names
+    data_band=[];strain_list=[];gap_list=[];state_list=[]
+# Identify file names, call functions
+# get corresponding strain:
+    for file in files:
+        if 'gap_strain' in file:
+            strain=float(file.strip('gap_strain'))
+            position_gap = path+'/'+ file
+            band_gap,band_state=read_gap(position_gap)
+# band gap is always positive:
+            if band_gap<0:
+                band_gap=0
+            data_band.append([strain,band_gap,band_state])
+    data_band=sorted(data_band)
+    for data in data_band:
+        strain_list.append(data[0]);gap_list.append(data[1]);state_list.append(data[2])
+    return data_band,strain_list,gap_list,state_list
+
+def add_lines(strain_list,gap_list,strain_mode):
+# Mark outliers
+# plt.text(strain_max,0,strain_max,color='b',fontsize=16)
+    gap_min=min(gap_list);gap_max=max(gap_list)
+    strain_max=strain_list[gap_list.index(gap_max)];strain_min=strain_list[gap_list.index(gap_min)]
+    gap_max=round(gap_max,2)
+    plt.axvline(x=strain_max, color='k', linestyle='--')
+#     plt.text(strain_max,0.6*gap_max,(strain_max,gap_max),color='r',fontsize=16)
+# add colors:
+    for i in range(len(strain_list)-1):
+        if state_list[i]=='Metallic':
+            plt.fill_between([strain_list[i],strain_list[i+1]],0,2,facecolor='grey',alpha=0.3)
+        if state_list[i]=='Indirect':
+            plt.fill_between([strain_list[i],strain_list[i+1]],0,2,facecolor='green',alpha=0.3)
+        if state_list[i]=='Direct':
+            plt.fill_between([strain_list[i],strain_list[i+1]],0,2,facecolor='yellow',alpha=0.3)
+    plt.xlabel('strain',fontsize=24)
+    plt.ylabel('Band gap(eV)',fontsize=24)
+    plt.tick_params(labelsize=18)
+    plt.tight_layout()# Display the picture in its entirety
+    
+# main program
+# read different files:
+strain_modes=['biaxial','shear','uniaxial_a','uniaxial_b']
+for strain_mode in strain_modes:
+    path='C:/Users/KING YPY/Documents/Jupyter/band/'
+    path=path+strain_mode
+    data_band,strain_list,gap_list,state_list=read_path(path)
+# draw in different pics:
+    import matplotlib.pyplot as plt
+    fig,ax= plt.subplots()
+    ax.plot(strain_list,gap_list)
+    for i in range(0,len(strain_list)):
+        ax.scatter(strain_list[i], gap_list[i], marker='*', color='black')
+# add lines:
+    add_lines(strain_list,gap_list,strain_mode)
+# save as different files:
+    save_address='C:/Users/KING YPY/Documents/Jupyter/band/'+strain_mode+'_gap.png'
+    plt.savefig(save_address, format='png')
